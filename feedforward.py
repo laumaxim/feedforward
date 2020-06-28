@@ -97,7 +97,7 @@ def backprop(weights,
     #Start with the last layer, the output layer
     '''EQUATION A:'''
     ytrue = ytrue.reshape(-1, 1)
-    error = (output[-1] - ytrue) * log_loss(ytrue, output[-1])
+    error = logloss_deriv(output[-1],ytrue) 
     '''EQUATION B:'''
     sig_deriv = output[-1] * ( 1 - output[-1])
     #derivative of the sigmoid function with respect to the
@@ -129,7 +129,11 @@ def backprop(weights,
         z = np.hstack([output[-l-1],bias])
         delta_wH = np.dot(-grad.transpose(), z)*LR_H
         w_new.append(weights[-l] + delta_wH.transpose())
+
     return list(reversed(w_new))
+
+def logloss_deriv(activation, y):
+    return -y/activation + (1-y)/(1-activation)
 
 def two_layers():
     LOSS_VEC = []
@@ -144,7 +148,6 @@ def two_layers():
         ACC_VEC.append(sum((ypred) == y.reshape(-1,1)) / len(y))
         new_weights = backprop(weights, out, y, X,0.01,0.01)
         weights = new_weights
-
 
 
 def four_layers():

@@ -10,12 +10,17 @@ This process is also called forward-probagation.
 
 
 Backprogation is used to compute the gradient of the loss function over the space of all possible weigths.
-This process is implemented in the function `backprop()` for a dense neural net, where the output layer consists of 1 neuron and the loss function is the log loss. This is a binary classifier.
+This process is implemented in the function `backprop()` for a dense neural net, where the output layer consists of 1 neuron and the loss function is the log loss. The neural network then becomes a binary classifier.
 
 In general, the goal of any supervised learning algorithm is to find a functions that maps the set of inputs $X$ to their correct output $y$.
-The function `artificial_neural_network()` takes as input the training data $X$ with desired output $y$ and the hyperparameters number of `epochs`, batch_size and the learning rate `LR_H` for the hidden and `LR_O` for the outer layer.
+The function `artificial_neural_network()` takes as input the training data $X$ with desired output $y$ and the hyperparameters number of `epochs`, `batch_size` and the learning rate `LR_H` for the hidden and `LR_O` for the outer layer.
 The weights $W$ are first initialised randomly and the predicted output of the neural net is computed with `feed_forward()`.
 The loss function `log_loss()` is used to calculate the discrepency between the predicted and the actual outputs $y$
+The network is trained by minimising the loss function with respect to the weights using the gradient descent algorithm. The gradient of the loss function is calculated using backpropagation using the function `backprop()`.
+The first $n$ training samples from $X$ are used to update the weights where $n$ is the hyperparamter `batch_size`. Then the next $n$ samples from $X$ are used until *all* training samples have been worked through. This constitutes one epoch and is repeated as many times as is defined by the hyperparamater `epochs`.
+For each epoch the current training accuraccy and the current log loss of the output is tracked in the lists `LOSS_VEC` and `ACC_VEC`. Those metrics can then be plotted to evaluate the learning of the neural net.
+
+
 
 ## ToDo:
 - Allow the use of different activation functions, like ReLu or tanh

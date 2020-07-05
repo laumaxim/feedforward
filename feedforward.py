@@ -178,6 +178,7 @@ def main():
     print(f"Minimum Loss : {min(LOSS_VEC)}")
     print("")
     print(f"Final Accuracy : {ACC_VEC[-1]}")
+    print("")
     #plt.title("ANN with 2 layers")
     visualize(LOSS_VEC, ACC_VEC)
 
@@ -197,6 +198,7 @@ def main():
     print(f"Minimum Loss : {min(LOSS_VEC)}")
     print("")
     print(f"Final Accuracy : {ACC_VEC[-1]}")
+    print("")
 
     # Create a grid in the rectangle $-2<x,y<3$ 
     xx = np.linspace(-2, 3, 40)

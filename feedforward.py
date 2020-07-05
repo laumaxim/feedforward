@@ -9,17 +9,13 @@ def sigmoid(x):
     return 1.0 / (1.0 + np.exp(-x))
 
 
-def unit_test_sigmoid():
-    '''unit test of function sigmoid()'''
-    a = np.array([-10.0, -1.0, 0.0, 1.0, 10.0])
-    expected = np.array([0.0, 0.27, 0.5, 0.73, 1.0])
-    assert np.all(sigmoid(a).round(2) == expected)
-
-
 def log_loss(ytrue, ypred):
     loss = - (ytrue*np.log(ypred) + (1-ytrue)*np.log(1-ypred))
     return loss
 
+
+def logloss_deriv(activation, y):
+    return -y/activation + (1-y)/(1-activation)
 
 
 def feed_forward(X, weights:list, activation=sigmoid):
@@ -57,31 +53,6 @@ def feed_forward(X, weights:list, activation=sigmoid):
     return output
 
 
-def unit_test_ff():
-    X_bias = np.hstack((X,np.ones((50,1))))
-    hidden_weights = np.random.uniform(size=(3,2))
-    outer_weights = np.random.uniform(size=(3,1))
-    out = feed_forward(X_bias, [hidden_weights, outer_weights])
-    assert out[0].shape == (50, 2)
-    assert out[0].shape == (50, 1)
-
-    Xref = np.array([[1.0, 2.0, 1.0]])
-    whidden = np.array([[1.0, 2.0, 0.0],
-                    [-1.0, -2.0, 0.0]
-                        ]).T
-    wout = np.array([1.0, -1.0, 0.5]).T
-
-    out = feed_forward(Xref, [whidden, wout])
-    assert np.all(out[0].round(2) == np.array([[0.99, 0.01]]))
-    assert np.all(out[1].round(2) == np.array([[0.82]]))
-
-
-def unit_test_logloss():
-    ytrue = np.array([0.0, 0.0, 1.0, 1.0])
-    ypred = np.array([0.01, 0.99, 0.01, 0.99])
-    expected = np.array([0.01, 4.61, 4.61, 0.01])
-    assert np.all(log_loss(ytrue, ypred).round(2) == expected)
-
 def backprop(weights,
              output,
              ytrue,
@@ -105,17 +76,16 @@ def backprop(weights,
     grad = sig_deriv * error
     
     '''EQUATION C:'''
-    bias = np.ones((output[-2].shape[0] ,1))
-    hidden_out_bias = np.hstack([output[-2],bias])
+    bias = np.ones((output[-2].shape[0], 1))
+    hidden_out_bias = np.hstack([output[-2], bias])
     #don't forget the bias!
-    delta_wo = np.dot(- grad.transpose(), hidden_out_bias) * LR_O
+    delta_wo = np.dot(grad.transpose(), hidden_out_bias) * LR_O
     
     #and finally, old weights + delta weights -> new weights!
-    w_new.append(weights[-1] + delta_wo.transpose())
+    w_new.append(weights[-1] - delta_wo.transpose())
     
     # l=2 is the second-last layer
     for l in range(2,len(output)):
-        #print(f'l: {l}')
         '''EQUATION D:'''
         sig_deriv = output[-l] * ( 1 - output[-l])
         w = weights[-l+1]
@@ -123,22 +93,19 @@ def backprop(weights,
         #since it is not backpropagated!
         ## ??
         #grad = np.dot(grad,w[:-1].transpose())
-        grad = sig_deriv  * np.dot(grad,w[:-1].transpose())
+        grad = sig_deriv * np.dot(grad, w[:-1].transpose())
         '''EQUATION E:'''
-        bias =  np.ones((output[-l-1].shape[0] ,1))
+        bias =  np.ones((output[-l-1].shape[0], 1))
         z = np.hstack([output[-l-1],bias])
-        delta_wH = np.dot(-grad.transpose(), z)*LR_H
-        w_new.append(weights[-l] + delta_wH.transpose())
+        delta_wH = np.dot(grad.transpose(), z)*LR_H
+        w_new.append(weights[-l] - delta_wH.transpose())
 
     return list(reversed(w_new))
-
-def logloss_deriv(activation, y):
-    return -y/activation + (1-y)/(1-activation)
 
 def two_layers():
     LOSS_VEC = []
     ACC_VEC = []
-    hidden_weights = np.random.uniform(size=(3,2)) # 3 inputs get passed to 2 neurons
+    hidden_weights = np.random.uniform(size=(3,2))
     outer_weights = np.random.uniform(size=(3,1))
     weights = [hidden_weights,outer_weights]
     for _ in range(1000):
@@ -168,3 +135,40 @@ def four_layers():
         ACC_VEC.append(sum((ypred) == y.reshape(-1,1)) / len(y))
         new_weights = backprop(weights, out, y, X,0.01,0.01)
         weights = new_weights
+
+def artificial_neural_network(
+    neurons_per_layer,
+    input_shape=2,
+    epochs=500,
+    batch_size=25,
+    LR_H=0.01,
+    LR_O=0.01
+    ):
+    '''
+    input_per_layer -- list of int, length of list is the number of inputs per layer, and the ith element of the list is the number of neurons in the ith hidden layer. The output layer always has exactly one neuron.
+    '''
+    inp = input_shape + 1 # add bias
+    weights = []
+    for neurons in neurons_per_layer:
+        weights.append(np.random.normal(size=(inp, neurons)))
+        # number of inputs of the next layer equals number of neurons of the previous layer + 1
+        inp = neurons + 1
+    weights.append(inp+1,1)
+
+    LOSS_VEC = []
+    ACC_VEC = []
+    for _ in range(epochs):
+        for Xbatch in batch(X,batch_size):
+            X_bias = np.hstack((Xbatch, np.ones((Xbatch.shape[0], 1))))
+            out = feed_forward(X_bias, weights)
+            loss = sum(log_loss(y.reshape(-1,1), out[-1]))[0]
+            LOSS_VEC.append(loss)
+            ypred=out[-1].round()
+            acc = sum((ypred) == y.reshape(-1,1)) / len(y)
+            ACC_VEC.append(acc)
+            weights = backprop(weights,out,y,Xbatch,LR_H,LR_O)
+
+def batch(lst, n):
+    '''Yields chunks of size n of the list'''
+    for i in range(0,len(lst),n):
+        yield lst[i:i+n]

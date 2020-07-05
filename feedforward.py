@@ -111,7 +111,6 @@ def add_bias(X):
     return np.hstack((X, np.ones((X.shape[0], 1))))
 
 def artificial_neural_network(X,y,neurons_per_layer,
-                              input_dim,
                               epochs=500,
                               batch_size=25,
                               LR_H=0.01,
@@ -119,7 +118,7 @@ def artificial_neural_network(X,y,neurons_per_layer,
     '''
     input_per_layer -- list of int, length of list is the number of inputs per layer, and the ith element of the list is the number of neurons in the ith hidden layer. The output layer always has exactly one neuron.
     '''
-    inp = input_dim + 1 # add bias
+    inp = X.shape[1] + 1 # add bias
     weights = []
     for neurons in neurons_per_layer:
         weights.append(np.random.normal(size=(inp, neurons)))
@@ -171,7 +170,7 @@ def main():
 
     ## ANN with two layers, first layer has two nodes and the output layer has one node
     w, LOSS_VEC, ACC_VEC  = artificial_neural_network(X,y,
-                        [2], input_dim=2,
+                        [2],
                         epochs=5000,
                         batch_size=25)
     print(f"Maximum Loss : {max(LOSS_VEC)}")
@@ -187,7 +186,6 @@ def main():
                         X,
                         y,
                         [4,6,6,4],
-                        input_dim=2,
                         epochs=5000,
                         batch_size=25,
                         LR_H=0.03,

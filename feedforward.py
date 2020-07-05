@@ -1,12 +1,17 @@
 import numpy as np
 from sklearn.datasets import make_moons
-import matplotlib.pyplot as pyplot
+import matplotlib.pyplot as plt
 
-X,y = make_moons(n_samples=50, noise=0.2, random_state=43)
-X_bias = np.hstack((X,np.ones((50,1))))
 
 def sigmoid(x):
     return 1.0 / (1.0 + np.exp(-x))
+
+def ReLU(z):
+    return np.maximum(0,z)
+  
+
+def tanh(z):
+    return np.tanh(z)
 
 
 def log_loss(ytrue, ypred):
@@ -102,73 +107,120 @@ def backprop(weights,
 
     return list(reversed(w_new))
 
-def two_layers():
-    LOSS_VEC = []
-    ACC_VEC = []
-    hidden_weights = np.random.uniform(size=(3,2))
-    outer_weights = np.random.uniform(size=(3,1))
-    weights = [hidden_weights,outer_weights]
-    for _ in range(1000):
-        out = feed_forward(X_bias, weights)
-        LOSS_VEC.append(sum(log_loss(y.reshape(-1,1),out[-1]))[0])
-        ypred=out[-1].round()
-        ACC_VEC.append(sum((ypred) == y.reshape(-1,1)) / len(y))
-        new_weights = backprop(weights, out, y, X,0.01,0.01)
-        weights = new_weights
+def add_bias(X):
+    return np.hstack((X, np.ones((X.shape[0], 1))))
 
-
-def four_layers():
-    weights1 = np.random.uniform(size=(3,5))
-    weights2 = np.random.uniform(size=(6,4))
-    weights3 = np.random.uniform(size=(5,5))
-    weights4 = np.random.uniform(size=(6,2))
-    outer_weights = np.random.uniform(size=(3,1))
-    #weights = [weights1,outer_weights]
-    weights = [weights1,weights2,weights3,weights4,outer_weights]
-    LOSS_VEC = []
-    ACC_VEC = []
-    for _ in range(400):
-        #print(f'iteration {i}')
-        out = feed_forward(X_bias, weights)
-        LOSS_VEC.append(sum(log_loss(y.reshape(-1,1),out[-1]))[0])
-        ypred=out[-1].round()
-        ACC_VEC.append(sum((ypred) == y.reshape(-1,1)) / len(y))
-        new_weights = backprop(weights, out, y, X,0.01,0.01)
-        weights = new_weights
-
-def artificial_neural_network(
-    neurons_per_layer,
-    input_shape=2,
-    epochs=500,
-    batch_size=25,
-    LR_H=0.01,
-    LR_O=0.01
-    ):
+def artificial_neural_network(X,y,neurons_per_layer,
+                              input_dim,
+                              epochs=500,
+                              batch_size=25,
+                              LR_H=0.01,
+                              LR_O=0.01):
     '''
     input_per_layer -- list of int, length of list is the number of inputs per layer, and the ith element of the list is the number of neurons in the ith hidden layer. The output layer always has exactly one neuron.
     '''
-    inp = input_shape + 1 # add bias
+    inp = input_dim + 1 # add bias
     weights = []
     for neurons in neurons_per_layer:
         weights.append(np.random.normal(size=(inp, neurons)))
         # number of inputs of the next layer equals number of neurons of the previous layer + 1
         inp = neurons + 1
-    weights.append(inp+1,1)
+    weights.append(np.random.normal(size=(inp, 1)))
 
     LOSS_VEC = []
     ACC_VEC = []
     for _ in range(epochs):
-        for Xbatch in batch(X,batch_size):
-            X_bias = np.hstack((Xbatch, np.ones((Xbatch.shape[0], 1))))
+        for Xbatch,ybatch in batch(X,y,batch_size):
+            X_bias =add_bias(Xbatch)
             out = feed_forward(X_bias, weights)
-            loss = sum(log_loss(y.reshape(-1,1), out[-1]))[0]
-            LOSS_VEC.append(loss)
-            ypred=out[-1].round()
-            acc = sum((ypred) == y.reshape(-1,1)) / len(y)
-            ACC_VEC.append(acc)
-            weights = backprop(weights,out,y,Xbatch,LR_H,LR_O)
+            weights = backprop(weights,out,ybatch,Xbatch,LR_H,LR_O)
+        loss = sum(log_loss(ybatch.reshape(-1,1), out[-1]))[0]
+        LOSS_VEC.append(loss)
+        ypred=out[-1].round()
+        acc = sum((ypred) == ybatch.reshape(-1,1)) / len(ybatch)
+        ACC_VEC.append(acc)
+    return weights, LOSS_VEC, ACC_VEC
 
-def batch(lst, n):
-    '''Yields chunks of size n of the list'''
-    for i in range(0,len(lst),n):
-        yield lst[i:i+n]
+def batch(X,y,n):
+    '''Yields chunks of size n of the dataset'''
+    for i in range(0,len(X),n):
+        yield X[i:i+n], y[i:i+n]
+
+def visualize(LOSS_VEC, ACC_VEC):
+    plt.figure(figsize =(12,6))
+    plt.subplot(121)
+    plt.plot(ACC_VEC)
+    plt.title('model accuracy')
+    plt.ylabel('accuracy')
+    plt.xlabel('epoch')
+    #plt.legend(['train', 'test'], loc='lower right')
+
+    plt.subplot(122)
+    plt.plot(LOSS_VEC)
+    plt.title('model loss')
+    plt.ylabel('log loss')
+    plt.xlabel('epoch')
+    #plt.legend(['train', 'test'], loc='lower right')
+
+    plt.show()
+
+
+def main():
+    # Get dataset 
+    X,y = make_moons(n_samples=50, noise=0.2, random_state=43)
+
+    ## ANN with two layers, first layer has two nodes and the output layer has one node
+    w, LOSS_VEC, ACC_VEC  = artificial_neural_network(X,y,
+                        [2], input_dim=2,
+                        epochs=5000,
+                        batch_size=25)
+    print(f"Maximum Loss : {max(LOSS_VEC)}")
+    print("")
+    print(f"Minimum Loss : {min(LOSS_VEC)}")
+    print("")
+    print(f"Final Accuracy : {ACC_VEC[-1]}")
+    #plt.title("ANN with 2 layers")
+    visualize(LOSS_VEC, ACC_VEC)
+
+    ## ANN with five layers
+    w, LOSS_VEC, ACC_VEC  = artificial_neural_network(
+                        X,
+                        y,
+                        [4,6,6,4],
+                        input_dim=2,
+                        epochs=5000,
+                        batch_size=25,
+                        LR_H=0.03,
+                        LR_O=0.03)
+    #plt.title("ANN with 5 layers")
+    visualize(LOSS_VEC, ACC_VEC)
+    print(f"Maximum Loss : {max(LOSS_VEC)}")
+    print("")
+    print(f"Minimum Loss : {min(LOSS_VEC)}")
+    print("")
+    print(f"Final Accuracy : {ACC_VEC[-1]}")
+
+    # Create a grid in the rectangle $-2<x,y<3$ 
+    xx = np.linspace(-2, 3, 40)
+    yy = np.linspace(-2, 3, 40)
+    gx, gy = np.meshgrid(xx, yy)
+
+    Z = np.c_[gx.ravel(), gy.ravel()]
+    out = feed_forward(add_bias(Z), w)
+    ypred=out[-1] #.round()
+    ypred =ypred.reshape(gx.shape)
+    plt.contourf(gx, gy, ypred, cmap=plt.cm.coolwarm, alpha=0.8)
+
+    axes = plt.gca()
+    axes.set_xlim([-2, 3])
+    axes.set_ylim([-2, 3])
+
+    plt.scatter(X[:,0], X[:,1], c=y)
+    plt.title('Model predictions on our Training set')
+
+    plt.show()
+
+
+if __name__ == '__main__':
+    main()
+
